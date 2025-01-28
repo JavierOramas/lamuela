@@ -7,7 +7,7 @@ from time import sleep
 from random import randint
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-import sys
+import string
 import json
 from contextlib import asynccontextmanager
 
@@ -27,8 +27,9 @@ async def lifespan(app: FastAPI):
         with open("temp/model_name.tmp") as f:
             selected_model = models[f.read().strip()]
     except:
-        print("Invalid model name, using default deepseek-llm-7b-chat")
-        selected_model = models["deepseek-llm-7b-chat"]
+        model_name = models.keys()[0]
+        print(f"Invalid model name, using default {model_name}")
+        selected_model = models[model_name]
 
     print(f"Loading {selected_model}, this may take some time...")
     global tokenizer
@@ -51,10 +52,16 @@ def generate_response(request: Request, prompt: str = Form(...)):
     # Tokenize the input prompt
     inputs = tokenizer(prompt, return_tensors="pt").to("mps")
     # Generate response using the model
-    output = model.generate(**inputs, max_length=200)
+    output = model.generate(**inputs, max_length=1000)
     response = tokenizer.decode(output[0], skip_special_tokens=True)
     print(response)
 
+    # Remove the prompt from the beginning of the response if it is there
+    if response.startswith(prompt):
+        response = response[len(prompt):].strip()
+        # Remove any punctuation symbol after it
+        while response and response[0] in string.punctuation:
+            response = response[1:].strip()
     
     return templates.TemplateResponse("response.html", {"request": request, "response": response})
 
