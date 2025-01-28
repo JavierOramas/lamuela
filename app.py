@@ -1,4 +1,5 @@
 from time import sleep
+from typing_extensions import final
 from fastapi import FastAPI, Form, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
@@ -18,11 +19,10 @@ with open("models.json") as f:
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-
+# To run this with a specific model, e.g. deepseek-llam-13b-chat, run:
+# python app.py deepseek-llam-13b-chat
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # To run this with a specific model, e.g. deepseek-llam-13b-chat, run:
-    # python app.py deepseek-llam-13b-chat
     try:
         with open("temp/model_name.tmp") as f:
             selected_model = models[f.read().strip()]
@@ -52,17 +52,18 @@ def generate_response(request: Request, prompt: str = Form(...)):
     # Tokenize the input prompt
     inputs = tokenizer(prompt, return_tensors="pt").to("mps")
     # Generate response using the model
-    output = model.generate(**inputs, max_length=1000)
+    output = model.generate(**inputs, max_length=1000, pad_token_id=model.config.eos_token_id)
     response = tokenizer.decode(output[0], skip_special_tokens=True)
-    print(response)
 
+    final_response = response.replace("\n", "<br>")
+
+    print(final_response)
     # Remove the prompt from the beginning of the response if it is there
-    if response.startswith(prompt):
-        response = response[len(prompt):].strip()
+    if final_response.startswith(prompt):
+        final_response = final_response[len(prompt):].strip()
         # Remove any punctuation symbol after it
-        while response and response[0] in string.punctuation:
-            response = response[1:].strip()
+        while final_response and final_response[0] in string.punctuation:
+            final_response = final_response[1:].strip()
+
     
-    return templates.TemplateResponse("response.html", {"request": request, "response": response})
-
-
+    return templates.TemplateResponse("response.html", {"request": request, "response": final_response})
