@@ -1,0 +1,5 @@
+{
+    "deepseek-llm-7b-chat": "deepseek-ai/deepseek-llm-7b-chat",
+    "ReaderLM-v2": "jinaai/ReaderLM-v2",
+    "DeepSeek-R1-Distill-Qwen-1.5B": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+}

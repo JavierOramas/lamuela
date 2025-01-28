@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaMuela Chat</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            background: #f9f9f9;
+        }
+        .chat-container {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 15px;
+            background: #fff;
+            height: 400px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background: #007BFF;
+            color: #fff;
+            align-self: flex-end;
+        }
+        .ai-message {
+            background: #e5e5ea;
+            color: #333;
+            align-self: flex-start;
+        }
+        .input-container {
+            display: flex;
+            margin-top: 10px;
+        }
+        textarea {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: none;
+            height: 50px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-left: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+
+        @keyframes typing {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+            100% { content: '.'; }
+        }
+
+        #loading-message::after {
+            content: '.';
+            animation: typing 1.5s infinite steps(1, end);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>LaMuela LLM Chat</h1>
+    <div class="chat-container" id="chat-box">
+        <div class="ai-message message">Hello! How can I assist you today?</div>
+    </div>
+
+    <div class="input-container">
+        <textarea id="prompt" name="prompt" placeholder="Type your message..." 
+                  oninput="toggleButton()" 
+                  onkeydown="if (event.key === 'Enter') document.getElementById('send-btn').click();"></textarea>
+        <button id="send-btn" type="submit" disabled 
+                hx-post="/generate" 
+                hx-target="#chat-box" 
+                hx-swap="beforeend" 
+                hx-vals="js:{prompt: document.getElementById('prompt').value}"
+                hx-on::before-request="addUserMessage(); addPlaceholder(); clearInput()"
+                hx-on::after-request="removePlaceholder(); scrollChat();">Send</button>
+    </div>
+    <small>This chat is powered by <a href="https://www.deepseek.com/">DeepSeek</a>. For now its a volatile chat, meaning that after you refresh the page the conversation will be lost forever. Keep that in mind and enjoy 😁</small>
+
+
+    <script>
+
+        var is_not_generating = true
+
+        function clearInput() {
+            document.getElementById('prompt').value = null;
+            document.getElementById('send-btn').disabled = true;
+        }
+
+        function scrollChat() {
+            const chatBox = document.getElementById('chat-box');
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function toggleButton() {
+            const input = document.getElementById('prompt').value.trim();
+            document.getElementById('send-btn').disabled = input === '' || is_not_generating === false;
+        }
+
+        function addUserMessage() {
+            const prompt = document.getElementById('prompt').value.trim();
+            if (prompt) {
+                const chatBox = document.getElementById('chat-box');
+                const userMessage = document.createElement('div');
+                userMessage.classList.add('user-message', 'message');
+                userMessage.innerText = prompt;
+                chatBox.appendChild(userMessage);
+                scrollChat();
+            }
+        }
+
+        function addPlaceholder() {
+            const chatBox = document.getElementById('chat-box');
+            const placeholder = document.createElement('div');
+            placeholder.classList.add('ai-message', 'message');
+            placeholder.setAttribute('id', 'loading-message');
+            placeholder.innerText = '';
+            chatBox.appendChild(placeholder);
+            scrollChat();
+            is_not_generating = false
+        }
+
+        function removePlaceholder() {
+            const placeholder = document.getElementById('loading-message');
+            const chatBox = document.getElementById('chat-box');
+            
+            if (placeholder) {
+                // Find the last child of the chat box, which should be the AI response
+                const lastChild = chatBox.lastElementChild;
+                
+                if (lastChild && lastChild.classList.contains('ai-message')) {
+                    // Remove the loading placeholder
+                    placeholder.remove();
+                    
+                    // Re-enable button and reset generation state
+                    is_not_generating = true;
+                    toggleButton();
+                }
+            }
+        }
+    </script>
+
+</body>
+</html>
